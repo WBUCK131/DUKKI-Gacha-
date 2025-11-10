@@ -144,6 +144,872 @@
         .color-indigo { background-color: #3949ab; }
         .color-violet { background-color: #8e24aa; }
 
+
+        /* ======================== 쿵쓰쿵쓰 스타일 ======================== */
+        #kungss-challenge {
+            text-align: center;
+        }
+        #kungss-target {
+            font-size: 1.2em; /* 3개 단어 표시를 위해 폰트 크기 조정 */
+            font-weight: bold;
+            padding: 15px;
+            margin: 15px 0;
+            background-color: #e8eaf6;
+            border-radius: 8px;
+            min-height: 40px;
+        }
+        #kungss-timer {
+            font-size: 1.2em;
+            color: #e53935;
+            font-weight: bold;
+        }
+        #kungss-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        .kungss-btn {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            flex-grow: 1;
+            min-width: calc(50% - 10px); /* 2개씩 띄우기 위한 스타일 */
+            box-sizing: border-box;
+            font-weight: bold;
+        }
+
+        /* 나머지 스타일 (가챠, 컬렉션, 네비게이션) (생략) */
+        .collection-section { margin-top: 15px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9; }
+        .collection-section h4 { margin-top: 0; margin-bottom: 10px; padding: 5px; background-color: #e0e0e0; border-radius: 3px; }
+        .collection-container { min-height: 30px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start; padding: 5px; }
+        .character-tag { padding: 5px 10px; border-radius: 5px; font-size: 0.9em; font-weight: bold; box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1); white-space: nowrap; }
+        .rank-N { background-color: #a0a0a0; color: white; } .rank-D { background-color: #8c8c8c; color: white; } .rank-C { background-color: #6a6a6a; color: white; }
+        .rank-B { background-color: #4c4c4c; color: white; } .rank-A { background-color: #1a1a1a; color: white; } .rank-R { background-color: #1e88e5; color: white; }
+        .rank-SR { background-color: #ffb300; color: black; border: 1px solid #ff8f00; } .rank-SSR { background-color: #e53935; color: white; border: 1px solid #c62828; }
+        .rank-UR { background-color: #9c27b0; color: white; border: 1px solid #7b1fa2; } .rank-LR { background-color: #d81b60; color: white; border: 1px solid #ad1457; }
+        .rank-M { background-color: #00bcd4; color: white; border: 1px solid #0097a7; }
+        .clear-btn { background-color: #bdbdbd; color: #333; border: none; padding: 8px 15px; border-radius: 5px; margin-top: 15px; cursor: pointer; font-size: 0.9em; }
+        .floating-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 500px; background-color: #333; box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2); display: flex; justify-content: space-around; padding: 10px 0; z-index: 1000; border-top-left-radius: 10px; border-top-right-radius: 10px; }
+        .nav-button { background: none; border: none; color: white; font-size: 0.9em; padding: 10px 5px; cursor: pointer; flex-grow: 1; transition: color 0.2s, background-color 0.2s; display: flex; flex-direction: column; align-items: center; }
+        .nav-button::before { content: '★'; font-size: 1.2em; margin-bottom: 3px; }
+        #nav-gacha::before { content: '🎰'; } #nav-coin::before { content: '💰'; } #nav-collection::before { content: '📚'; } #nav-settings::before { content: '⚙️'; }
+        .nav-button:hover, .nav-button.active { color: #ffb74d; background-color: #444; }
+        .nav-button.active { font-weight: bold; }
+        #empty-collection-message { color: #777; text-align: center; padding: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        
+        <h1>두끼 가챠! 🍜</h1>
+
+        <div id="coin-display">
+            현재 코인: <span id="coin-count">500</span> 🪙
+        </div>
+
+        <div id="gacha-screen" class="screen active">
+            <h2>두끼 뽑기 (코인 250 소모)</h2>
+            <p>주인공 '김두현' 캐릭터를 뽑아보세요!</p>
+            <div id="result-display" class="result-box">
+                <p>버튼을 눌러 뽑기를 시작하세요.</p>
+            </div>
+            <button id="gacha-button">두끼 뽑기 (1회)</button>
+            <div id="gacha-cooldown-display" class="cooldown-text" style="display:none;"></div>
+        </div>
+
+        <div id="coin-screen" class="screen">
+            <h2>코인 미니게임</h2>
+
+            <div id="sheep-game-section" class="game-section">
+                <h3>🐑 양털 색깔 맞추기 도박 (50코인)</h3>
+                <p>무지개색 중 5가지 색을 선택한 뒤, 양털 5개의 색을 예측하세요!</p>
+                <p>선택한 색: <span id="selected-sheep-colors">없음</span></p>
+
+                <div class="sheep-picker" id="sheep-picker-area">
+                    </div>
+                
+                <div class="rainbow-colors" id="color-palette">
+                    </div>
+
+                <div class="sheep-result-display" id="sheep-result">
+                    도박 시작을 누르세요.
+                </div>
+                <button id="start-sheep-bet-btn" class="btn-game">도박 시작! (50 코인)</button>
+            </div>
+
+            <div id="kungss-game-section" class="game-section">
+                <h3>🥁 김두현 쿵쓰쿵쓰 게임 (5초 제한)</h3>
+                <p>화면에 뜨는 **3개의 단어 시퀀스**를 5초 안에 아래 버튼으로 순서대로 정확히 맞추세요! (3라운드)</p>
+                
+                <div id="kungss-challenge">
+                    <p id="kungss-status">준비</p>
+                    <p id="kungss-timer">시간: 5초</p>
+                    <div id="kungss-target">단어 시퀀스 대기 중...</div>
+                    
+                    <div id="kungss-buttons">
+                        </div>
+                    
+                    <button id="start-kungss-game-btn" class="btn-game">게임 시작!</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="collection-screen" class="screen">
+            <h2>🎁 나의 두현 컬렉션</h2>
+            <p>획득한 모든 두현 캐릭터들을 등급별로 확인하세요!</p>
+            <div id="collection-list">
+                <p id="empty-collection-message">아직 획득한 캐릭터가 없습니다.</p>
+            </div>
+            <button id="clear-button" class="clear-btn">컬렉션 초기화</button>
+        </div>
+
+        <div id="settings-screen" class="screen">
+            <h2>⚙️ 앱 설정</h2>
+            <p>현재는 빈 화면입니다. 향후 다양한 설정을 추가할 수 있습니다.</p>
+            <p style="color: #777;">(예: 배경음악, 알림 설정 등)</p>
+        </div>
+    </div>
+
+    <nav class="floating-nav">
+        <button id="nav-gacha" class="nav-button active" data-screen="gacha-screen">가챠</button>
+        <button id="nav-coin" class="nav-button" data-screen="coin-screen">코인모으기</button>
+        <button id="nav-collection" class="nav-button" data-screen="collection-screen">컬렉션</button>
+        <button id="nav-settings" class="nav-button" data-screen="settings-screen">설정</button>
+    </nav>
+
+
+    <script>
+        // ========================================================
+        // I. 데이터 및 상수 정의
+        // ========================================================
+        // ✅ 가챠 비용 250으로 변경
+        const GACHA_COST = 250; 
+        const SHEEP_BET_COST = 50;
+        const USER_STATE_KEY = 'doukkiUserState';
+        // ✅ 가챠 쿨타임 3초 추가
+        const GACHA_COOLDOWN = 3; 
+
+        // 등급 및 캐릭터 정의 (새로운 목록 및 확률 적용)
+        const RARITY_ORDER = ["M", "LR", "UR", "SSR", "SR", "R", "A", "B", "C", "D", "N"];
+        
+        // ✅ 새로운 캐릭터 목록과 확률 (요청에 따라 설정)
+        const characters = [
+            // M (Myth – 0.0001%)
+            { name: "두현, 민초의 신. 남정네 없는 세계의 창조자.", rarity: "M", probability: 0.0001, colorClass: "rank-M" },
+
+            // LR (Legendary Rare – 0.001%)
+            { name: "고개 숙이지 마라, 왕관이 반짝이니까 신성화된 두현", rarity: "LR", probability: 0.001, colorClass: "rank-LR" },
+            { name: "민초빛 천사로 승천한 두현", rarity: "LR", probability: 0.001, colorClass: "rank-LR" },
+
+            // UR (Ultra Rare – 0.4%)
+            { name: "벌레와 민초로 세상을 구한 두현", rarity: "UR", probability: 0.1, colorClass: "rank-UR" },
+            { name: "외대에서 신격화된 두현", rarity: "UR", probability: 0.1, colorClass: "rank-UR" },
+            { name: "민트빛 날개 단 두현", rarity: "UR", probability: 0.1, colorClass: "rank-UR" },
+            { name: "멍친개와 왕관 나눠쓰는 두현", rarity: "UR", probability: 0.1, colorClass: "rank-UR" },
+            
+            // SSR (Super Super Rare – 2%)
+            { name: "벌레왕국 건국 두현", rarity: "SSR", probability: 0.333333, colorClass: "rank-SSR" },
+            { name: "민초유니버스의 여왕", rarity: "SSR", probability: 0.333333, colorClass: "rank-SSR" },
+            { name: "더빙쇼츠 1천만뷰 신화 두현", rarity: "SSR", probability: 0.333333, colorClass: "rank-SSR" },
+            { name: "이건 나의 예술이다 두현", rarity: "SSR", probability: 0.333333, colorClass: "rank-SSR" },
+            { name: "멍친개와 듀엣송 발매 두현", rarity: "SSR", probability: 0.333333, colorClass: "rank-SSR" },
+            { name: "대구 상공에 왕관 떠있는 두현", rarity: "SSR", probability: 0.333333, colorClass: "rank-SSR" },
+
+            // SR (Super Rare – 10%)
+            { name: "대구 하늘에 민트빛 오라 두현", rarity: "SR", probability: 1.25, colorClass: "rank-SR" },
+            { name: "벌레밴드 보컬 두현", rarity: "SR", probability: 1.25, colorClass: "rank-SR" },
+            { name: "외대 전설의 민초여신 두현", rarity: "SR", probability: 1.25, colorClass: "rank-SR" },
+            { name: "멍친개와 전화 연결 성공 두현", rarity: "SR", probability: 1.25, colorClass: "rank-SR" },
+            { name: "고개 숙이지 말라 벽화 주인공 두현", rarity: "SR", probability: 1.25, colorClass: "rank-SR" },
+            { name: "더빙쇼츠로 방송 출연 두현", rarity: "SR", probability: 1.25, colorClass: "rank-SR" },
+            { name: "남정네가 사라진 세상 꿈꾸는 두현", rarity: "SR", probability: 1.25, colorClass: "rank-SR" },
+            { name: "민초 성지순례 두현", rarity: "SR", probability: 1.25, colorClass: "rank-SR" },
+            
+            // R (Rare – 20%)
+            { name: "더빙쇼츠 100만뷰 달성 두현", rarity: "R", probability: 2.222222, colorClass: "rank-R" },
+            { name: "외대 전광판 민초 광고 두현", rarity: "R", probability: 2.222222, colorClass: "rank-R" },
+            { name: "벌레 댄스 챌린지 두현", rarity: "R", probability: 2.222222, colorClass: "rank-R" },
+            { name: "멍친개 생방중 채팅 두현", rarity: "R", probability: 2.222222, colorClass: "rank-R" },
+            { name: "남정네 근처 금지 법안 제안 두현", rarity: "R", probability: 2.222222, colorClass: "rank-R" },
+            { name: "대구 민초 페스티벌 MC 두현", rarity: "R", probability: 2.222222, colorClass: "rank-R" },
+            { name: "벌레들이 만든 왕관 쓰는 두현", rarity: "R", probability: 2.222222, colorClass: "rank-R" },
+            { name: "민초 or die 두현", rarity: "R", probability: 2.222222, colorClass: "rank-R" },
+            { name: "더빙 중 웃음 터진 두현", rarity: "R", probability: 2.222222, colorClass: "rank-R" },
+
+            // A (Amazing – 30%)
+            { name: "대구 하늘에 왕관 띄운 두현", rarity: "A", probability: 3, colorClass: "rank-A" },
+            { name: "나는 벌레의 여왕이다 두현", rarity: "A", probability: 3, colorClass: "rank-A" },
+            { name: "외대 민초의 전설 두현", rarity: "A", probability: 3, colorClass: "rank-A" },
+            { name: "멍친개와 통화 성공 직전 두현", rarity: "A", probability: 3, colorClass: "rank-A" },
+            { name: "더빙쇼츠 10만 좋아요 두현", rarity: "A", probability: 3, colorClass: "rank-A" },
+            { name: "민초 폭포 아래에서 명상하는 두현", rarity: "A", probability: 3, colorClass: "rank-A" },
+            { name: "벌레 코스프레 두현", rarity: "A", probability: 3, colorClass: "rank-A" },
+            { name: "남정네 목소리 감지 차단 두현", rarity: "A", probability: 3, colorClass: "rank-A" },
+            { name: "대구 거리 민초 버스광고 두현", rarity: "A", probability: 3, colorClass: "rank-A" },
+            { name: "왕관보다 소중한 건 자존심 두현", rarity: "A", probability: 3, colorClass: "rank-A" },
+            
+            // B (Better – 40%)
+            { name: "민초교 창시자 두현", rarity: "B", probability: 3.333333, colorClass: "rank-B" },
+            { name: "멍친개 생일에 영상 편지 보내는 두현", rarity: "B", probability: 3.333333, colorClass: "rank-B" },
+            { name: "남정네가 선생님♡ 하자 폭주 두현", rarity: "B", probability: 3.333333, colorClass: "rank-B" },
+            { name: "민트빛 조명 아래 춤추는 두현", rarity: "B", probability: 3.333333, colorClass: "rank-B" },
+            { name: "더빙쇼츠 편집 중 과몰입 두현", rarity: "B", probability: 3.333333, colorClass: "rank-B" },
+            { name: "대구역 민초 홍보 두현", rarity: "B", probability: 3.333333, colorClass: "rank-B" },
+            { name: "고개 숙이면 왕관 떨어져요 명언 스피커 두현", rarity: "B", probability: 3.333333, colorClass: "rank-B" },
+            { name: "외대 축제에서 벌레 퍼레이드 두현", rarity: "B", probability: 3.333333, colorClass: "rank-B" },
+            { name: "멍친개 이름 새긴 목걸이 두현", rarity: "B", probability: 3.333333, colorClass: "rank-B" },
+            { name: "민초 음료 홍보대사 두현", rarity: "B", probability: 3.333333, colorClass: "rank-B" },
+            { name: "남정네 차단 완료 두현", rarity: "B", probability: 3.333333, colorClass: "rank-B" },
+            { name: "벌레와 브이로그 찍는 두현", rarity: "B", probability: 3.333333, colorClass: "rank-B" },
+
+            // C (Common+ – 50%)
+            { name: "벌레 친구 생일 파티 두현", rarity: "C", probability: 3.846154, colorClass: "rank-C" },
+            { name: "민초 아이스크림 포장 알바 두현", rarity: "C", probability: 3.846154, colorClass: "rank-C" },
+            { name: "더빙쇼츠 썸네일 고르는 두현", rarity: "C", probability: 3.846154, colorClass: "rank-C" },
+            { name: "외대 민초 동아리 회장 두현", rarity: "C", probability: 3.846154, colorClass: "rank-C" },
+            { name: "고개를 숙이지 말라 현수막 두현", rarity: "C", probability: 3.846154, colorClass: "rank-C" },
+            { name: "대구 카페 민초라떼 두현", rarity: "C", probability: 3.846154, colorClass: "rank-C" },
+            { name: "남정네에게 민초 폭탄 투척 두현", rarity: "C", probability: 3.846154, colorClass: "rank-C" },
+            { name: "왕관에 민초 장식 두현", rarity: "C", probability: 3.846154, colorClass: "rank-C" },
+            { name: "벌레와 산책 두현", rarity: "C", probability: 3.846154, colorClass: "rank-C" },
+            { name: "멍친개 굿즈 모으는 두현", rarity: "C", probability: 3.846154, colorClass: "rank-C" },
+            { name: "더빙 대본에 헤으응 금지 적은 두현", rarity: "C", probability: 3.846154, colorClass: "rank-C" },
+            { name: "두현 is love 노래 부르는 두현", rarity: "C", probability: 3.846154, colorClass: "rank-C" },
+            { name: "외대 수업 중 벌레 스케치 두현", rarity: "C", probability: 3.846154, colorClass: "rank-C" },
+
+            // D (Decent – 60%)
+            { name: "대구에서 멍친개 굿즈 사는 두현", rarity: "D", probability: 4, colorClass: "rank-D" },
+            { name: "벌레 이모티콘 만드는 두현", rarity: "D", probability: 4, colorClass: "rank-D" },
+            { name: "남정네 필터 앱 만들려는 두현", rarity: "D", probability: 4, colorClass: "rank-D" },
+            { name: "외대 강의실에서 졸고 있는 두현", rarity: "D", probability: 4, colorClass: "rank-D" },
+            { name: "민초라떼 마시며 철학하는 두현", rarity: "D", probability: 4, colorClass: "rank-D" },
+            { name: "벌레랑 밥 나눠먹는 두현", rarity: "D", probability: 4, colorClass: "rank-D" },
+            { name: "고개 숙였더니 왕관 땅 두현", rarity: "D", probability: 4, colorClass: "rank-D" },
+            { name: "멍친개 영상 반복 시청 두현", rarity: "D", probability: 4, colorClass: "rank-D" },
+            { name: "민트색 파카 입은 두현", rarity: "D", probability: 4, colorClass: "rank-D" },
+            { name: "나 두끼야! 외치는 두현", rarity: "D", probability: 4, colorClass: "rank-D" },
+            { name: "민초 케이크 실패한 두현", rarity: "D", probability: 4, colorClass: "rank-D" },
+            { name: "더빙 녹음 중 재채기 두현", rarity: "D", probability: 4, colorClass: "rank-D" },
+            { name: "외대 잔디밭 벌레 탐사 두현", rarity: "D", probability: 4, colorClass: "rank-D" },
+            { name: "나는 남정네가 싫다 두현", rarity: "D", probability: 4, colorClass: "rank-D" },
+            { name: "왕관에 스티커 붙인 두현", rarity: "D", probability: 4, colorClass: "rank-D" },
+
+            // N (Normal – 80%)
+            { name: "대구 지하철에서 민초 먹는 두현", rarity: "N", probability: 4, colorClass: "rank-N" },
+            { name: "외대 매점에서 포카리 사는 두현", rarity: "N", probability: 4, colorClass: "rank-N" },
+            { name: "벌레한테 오늘 어땠어? 묻는 두현", rarity: "N", probability: 4, colorClass: "rank-N" },
+            { name: "남정네가 인사하자 도망가는 두현", rarity: "N", probability: 4, colorClass: "rank-N" },
+            { name: "더빙 연습하다 침 튄 두현", rarity: "N", probability: 4, colorClass: "rank-N" },
+            { name: "고개 숙이지 마라… 혼잣말 두현", rarity: "N", probability: 4, colorClass: "rank-N" },
+            { name: "커피 들고 버스 놓친 두현", rarity: "N", probability: 4, colorClass: "rank-N" },
+            { name: "민트색 슬리퍼 신은 두현", rarity: "N", probability: 4, colorClass: "rank-N" },
+            { name: "대구 하늘 바라보는 두현", rarity: "N", probability: 4, colorClass: "rank-N" },
+            { name: "멍친개 방송 기다리는 두현", rarity: "N", probability: 4, colorClass: "rank-N" },
+            { name: "벌레야 나 밥 먹었어? 두현", rarity: "N", probability: 4, colorClass: "rank-N" },
+            { name: "외대에서 벌레 포획 두현", rarity: "N", probability: 4, colorClass: "rank-N" },
+            { name: "왕관 떨어뜨리고 주운 두현", rarity: "N", probability: 4, colorClass: "rank-N" },
+            { name: "남정네가 헤으응 하자 기겁하는 두현", rarity: "N", probability: 4, colorClass: "rank-N" },
+            { name: "두현랜드 상상 중 두현", rarity: "N", probability: 4, colorClass: "rank-N" },
+            { name: "더빙 대본 찢은 두현", rarity: "N", probability: 4, colorClass: "rank-N" },
+            { name: "민초는 과학이다 두현", rarity: "N", probability: 4, colorClass: "rank-N" },
+            { name: "벌레에게 하이파이브 두현", rarity: "N", probability: 4, colorClass: "rank-N" },
+            { name: "민초 스티커 붙이는 두현", rarity: "N", probability: 4, colorClass: "rank-N" },
+            { name: "더빙 연습 중 하품하는 두현", rarity: "N", probability: 4, colorClass: "rank-N" },
+        ];
+        
+        const totalProbability = characters.reduce((sum, char) => sum + char.probability, 0); 
+        
+        let userState = {
+            coins: 500,
+            collection: []
+        };
+        
+        let isGachaOnCooldown = false;
+        let cooldownTimerId = null;
+
+        // 양털 도박 상수 (동일)
+        const RAINBOW_COLORS = [
+            { name: "빨강", class: "color-red" },
+            { name: "주황", class: "color-orange" },
+            { name: "노랑", class: "color-yellow" },
+            { name: "초록", class: "color-green" },
+            { name: "파랑", class: "color-blue" },
+            { name: "남색", class: "color-indigo" },
+            { name: "보라", class: "color-violet" }
+        ];
+        // ✅ 요청에 따라 양털 도박 보상 수정
+        const SHEEP_REWARD_MAP = {
+            2: 300, 
+            3: 800, 
+            4: 5000, 
+            5: 100000 
+        };
+
+        // 쿵쓰쿵쓰 게임 상수 (요청 사항 유지)
+        const KUNGSS_WORDS = ["김두현쿵스", "김두현기증나요", "김두다다쿵", "김김두현김김두현두현", "남정네"];
+        const KUNGSS_ROUNDS = 3;
+        // ✅ 쿵쓰쿵쓰 시간 5초로 변경
+        const KUNGSS_TIME_LIMIT = 5; 
+        const KUNGSS_REWARD = 2000;
+        const KUNGSS_SEQUENCE_LENGTH = 3; 
+
+        // 쿵쓰 게임 상태 변수 (동일)
+        let kungssCurrentRound = 0;
+        let kungssTimerId = null;
+        let kungssTargetSequence = []; 
+        let kungssUserInput = [];      
+
+
+        // ========================================================
+        // II. DOM 요소 접근 (동일 + 쿨타임 요소 추가)
+        // ========================================================
+        const gachaButton = document.getElementById('gacha-button');
+        const gachaCooldownDisplay = document.getElementById('gacha-cooldown-display'); // 쿨타임 표시 DOM
+        const resultDisplay = document.getElementById('result-display');
+        const collectionList = document.getElementById('collection-list');
+        const coinCountElement = document.getElementById('coin-count');
+        const screens = document.querySelectorAll('.screen');
+        const navButtons = document.querySelectorAll('.nav-button');
+        const emptyCollectionMessage = document.getElementById('empty-collection-message');
+        
+        // 양털 도박 DOM (동일)
+        const sheepPickerArea = document.getElementById('sheep-picker-area');
+        const colorPalette = document.getElementById('color-palette');
+        const startSheepBetBtn = document.getElementById('start-sheep-bet-btn');
+        const sheepResult = document.getElementById('sheep-result');
+        const selectedSheepColorsDisplay = document.getElementById('selected-sheep-colors');
+
+        // 쿵쓰쿵쓰 DOM (동일)
+        const startKungssGameBtn = document.getElementById('start-kungss-game-btn');
+        const kungssTarget = document.getElementById('kungss-target');
+        const kungssButtons = document.getElementById('kungss-buttons');
+        const kungssTimer = document.getElementById('kungss-timer');
+        const kungssStatus = document.getElementById('kungss-status');
+        
+
+        // ========================================================
+        // III. 상태 관리 함수 (동일)
+        // ========================================================
+
+        function loadUserState() {
+            const data = localStorage.getItem(USER_STATE_KEY);
+            if (data) {
+                const loadedState = JSON.parse(data);
+                userState = { ...userState, ...loadedState };
+            }
+        }
+
+        function saveUserState() {
+            localStorage.setItem(USER_STATE_KEY, JSON.stringify(userState));
+        }
+
+        function updateCoinDisplay() {
+            coinCountElement.textContent = userState.coins;
+        }
+
+        function addCoin(amount) {
+            userState.coins += amount;
+            saveUserState();
+            updateCoinDisplay();
+        }
+
+        function subtractCoin(amount) {
+            if (userState.coins < amount) {
+                return false;
+            }
+            userState.coins -= amount;
+            saveUserState();
+            updateCoinDisplay();
+            return true;
+        }
+
+        // ========================================================
+        // IV. 가챠/컬렉션 로직 (쿨타임 로직 추가)
+        // ========================================================
+
+        function conductGacha() { 
+            const randomValue = Math.random() * totalProbability;
+            let cumulativeProbability = 0;
+            for (const char of characters) {
+                cumulativeProbability += char.probability;
+                if (randomValue < cumulativeProbability) { return char; }
+            }
+            return characters[0]; 
+        }
+
+        function startGachaCooldown() {
+            if (cooldownTimerId) clearInterval(cooldownTimerId);
+            
+            isGachaOnCooldown = true;
+            gachaButton.disabled = true;
+            gachaCooldownDisplay.style.display = 'block';
+
+            let timeLeft = GACHA_COOLDOWN;
+            gachaCooldownDisplay.textContent = `쿨타임: ${timeLeft}초...`;
+
+            cooldownTimerId = setInterval(() => {
+                timeLeft--;
+                gachaCooldownDisplay.textContent = `쿨타임: ${timeLeft}초...`;
+
+                if (timeLeft <= 0) {
+                    clearInterval(cooldownTimerId);
+                    isGachaOnCooldown = false;
+                    gachaButton.disabled = false;
+                    gachaCooldownDisplay.style.display = 'none';
+                    gachaCooldownDisplay.textContent = '';
+                }
+            }, 1000);
+        }
+
+
+        function handleGacha() {
+            if (isGachaOnCooldown) {
+                resultDisplay.innerHTML = '<p style="color: red;">⏳ 잠시만요! 쿨타임 중입니다.</p>';
+                return;
+            }
+
+            if (!subtractCoin(GACHA_COST)) {
+                resultDisplay.innerHTML = `<p style="color: red;">❌ 코인이 부족합니다! (필요: ${GACHA_COST})</p>`;
+                return;
+            }
+            
+            startGachaCooldown(); // 쿨타임 시작
+
+            const pulledCharacter = conductGacha();
+            resultDisplay.innerHTML = `
+                🎉 **축하합니다!** 🎉<br>
+                <span class="character-tag ${pulledCharacter.colorClass}">${pulledCharacter.rarity}</span> 
+                **${pulledCharacter.name}**을(를) 획득했습니다!
+            `;
+            userState.collection.push(pulledCharacter.name);
+            saveUserState();
+        }
+
+        function displayCollection() { 
+            const collection = userState.collection;
+            collectionList.innerHTML = ''; 
+
+            if (collection.length === 0) {
+                emptyCollectionMessage.style.display = 'block';
+                return;
+            } else {
+                emptyCollectionMessage.style.display = 'none';
+            }
+
+            const countsByRarity = {};
+            RARITY_ORDER.forEach(rarity => { countsByRarity[rarity] = []; });
+            
+            collection.forEach(name => {
+                const charInfo = characters.find(c => c.name === name);
+                if (charInfo) {
+                    const existing = countsByRarity[charInfo.rarity].find(item => item.name === name);
+                    if (existing) { existing.count++; } 
+                    else { countsByRarity[charInfo.rarity].push({ name: name, count: 1, colorClass: charInfo.colorClass }); }
+                }
+            });
+
+            RARITY_ORDER.forEach(rarity => {
+                const charList = countsByRarity[rarity];
+                if (charList && charList.length > 0) {
+                    const sectionDiv = document.createElement('div');
+                    sectionDiv.classList.add('collection-section');
+                    const title = document.createElement('h4');
+                    title.textContent = `${rarity} 등급 (총 ${charList.reduce((sum, item) => sum + item.count, 0)}개)`;
+                    sectionDiv.appendChild(title);
+                    const container = document.createElement('div');
+                    container.classList.add('collection-container');
+
+                    charList.forEach(item => {
+                        const tag = document.createElement('span');
+                        tag.classList.add('character-tag', item.colorClass);
+                        tag.textContent = `${item.name} (x${item.count})`;
+                        container.appendChild(tag);
+                    });
+
+                    sectionDiv.appendChild(container);
+                    collectionList.appendChild(sectionDiv);
+                }
+            });
+        }
+
+        function clearCollection() { 
+            if (confirm("정말로 컬렉션을 초기화하시겠습니까? 저장된 모든 캐릭터가 삭제됩니다.")) {
+                userState.collection = [];
+                userState.coins = 500;
+                saveUserState();
+                updateCoinDisplay();
+                displayCollection();
+                document.getElementById('result-display').innerHTML = '<p>컬렉션이 초기화되었습니다. 뽑기를 다시 시작하세요.</p>';
+            }
+        }
+        
+        // ========================================================
+        // V. 양털 도박 로직 (동일)
+        // ========================================================
+
+        let userSheepPicks = new Array(5).fill(null); 
+        let selectedColor = RAINBOW_COLORS[0].name; 
+
+        function initSheepGame() {
+            // 1. 색상 팔레트 생성
+            colorPalette.innerHTML = '';
+            RAINBOW_COLORS.forEach(color => {
+                const option = document.createElement('div');
+                option.classList.add('color-option', color.class);
+                option.dataset.color = color.name;
+                option.addEventListener('click', () => { selectColorOption(color.name, option); });
+                colorPalette.appendChild(option);
+            });
+            selectColorOption(RAINBOW_COLORS[0].name, colorPalette.firstChild);
+
+            // 2. 양털 픽커 생성
+            sheepPickerArea.innerHTML = '';
+            for (let i = 0; i < 5; i++) {
+                const sheep = document.createElement('div');
+                sheep.classList.add('sheep-wool');
+                sheep.dataset.index = i;
+                sheep.addEventListener('click', () => { selectSheepColor(i, sheep); });
+                sheepPickerArea.appendChild(sheep);
+            }
+            
+            // 3. 초기 상태 업데이트
+            userSheepPicks.fill(null);
+            updateSheepDisplay();
+            sheepResult.textContent = '무지개색 중 5가지 색을 양털에 선택해 주세요.';
+        }
+        
+        function selectColorOption(colorName, element) {
+            document.querySelectorAll('.color-option').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+            selectedColor = colorName;
+        }
+
+        function selectSheepColor(index, sheepElement) {
+            userSheepPicks[index] = selectedColor;
+            
+            sheepElement.className = 'sheep-wool selected'; 
+            const colorData = RAINBOW_COLORS.find(c => c.name === selectedColor);
+            if (colorData) {
+                sheepElement.classList.add(colorData.class);
+            }
+            
+            updateSheepDisplay();
+        }
+
+        function updateSheepDisplay() {
+            const displayNames = userSheepPicks.map(name => name ? name : '??');
+            selectedSheepColorsDisplay.textContent = displayNames.join(', ');
+            
+            document.querySelectorAll('.sheep-wool').forEach((sheep, index) => {
+                const selected = userSheepPicks[index];
+                sheep.className = 'sheep-wool';
+                if (selected) {
+                    sheep.classList.add('selected');
+                    const colorData = RAINBOW_COLORS.find(c => c.name === selected);
+                    if (colorData) {
+                        sheep.classList.add(colorData.class);
+                    }
+                }
+            });
+        }
+
+        function startSheepBet() {
+            if (!subtractCoin(SHEEP_BET_COST)) {
+                sheepResult.innerHTML = `<span style="color:red;">❌ 코인이 부족합니다! (필요: ${SHEEP_BET_COST})</span>`;
+                return;
+            }
+
+            if (userSheepPicks.includes(null)) {
+                addCoin(SHEEP_BET_COST); 
+                sheepResult.innerHTML = '<span style="color:red;">❌ 5개의 양털 색깔을 모두 선택해야 합니다.</span>';
+                return;
+            }
+
+            const randomResult = [];
+            for (let i = 0; i < 5; i++) {
+                const randomIndex = Math.floor(Math.random() * RAINBOW_COLORS.length);
+                randomResult.push(RAINBOW_COLORS[randomIndex].name);
+            }
+
+            let matchedCount = 0;
+            for (let i = 0; i < 5; i++) {
+                if (userSheepPicks[i] === randomResult[i]) {
+                    matchedCount++;
+                }
+            }
+
+            sheepResult.innerHTML = `
+                <p>당신의 선택: ${userSheepPicks.join(', ')}</p>
+                <p>랜덤 결과: ${randomResult.join(', ')}</p>
+                <p style="font-size: 1.3em; margin: 10px 0;">✅ **${matchedCount}개** 일치!</p>
+            `;
+
+            let reward = SHEEP_REWARD_MAP[matchedCount] || 0;
+            let resultText = '';
+
+            if (reward > 0) {
+                addCoin(reward);
+                resultText = `<span style="color: green; font-weight: bold;">🎉 승리! ${reward} 코인 획득! (현재 ${userState.coins})</span>`;
+            } else {
+                resultText = `<span style="color: red; font-weight: bold;">😭 패배! ${SHEEP_BET_COST} 코인을 잃었습니다. (현재 ${userState.coins})</span>`;
+            }
+
+            sheepResult.innerHTML += resultText;
+            
+            document.querySelectorAll('.sheep-wool').forEach((sheep, index) => {
+                const resultColorName = randomResult[index];
+                const resultColorData = RAINBOW_COLORS.find(c => c.name === resultColorName);
+                
+                sheep.className = 'sheep-wool selected'; 
+                sheep.classList.add(resultColorData.class);
+                
+                if (userSheepPicks[index] === randomResult[index]) {
+                    sheep.style.border = '4px solid gold';
+                } else {
+                    sheep.style.border = '4px solid red';
+                }
+            });
+            setTimeout(() => {
+                document.querySelectorAll('.sheep-wool').forEach(s => s.style.border = '4px solid #333');
+            }, 3000); 
+        }
+
+        // ========================================================
+        // VI. 쿵쓰쿵쓰 게임 로직 (단어 3개 순서 맞추기 - 시간 5초로 변경)
+        // ========================================================
+
+        function initKungssGame() {
+            resetKungssGame();
+        }
+
+        function resetKungssGame() {
+            kungssCurrentRound = 0;
+            kungssTargetSequence = [];
+            kungssUserInput = [];
+            kungssStatus.textContent = `준비 (총 ${KUNGSS_ROUNDS} 라운드, 단어 3개 순서 입력)`;
+            // ✅ KUNGSS_TIME_LIMIT 변수 사용
+            kungssTimer.textContent = `시간: ${KUNGSS_TIME_LIMIT}초`; 
+            kungssTarget.textContent = '단어 시퀀스 대기 중...';
+            startKungssGameBtn.disabled = false;
+            kungssButtons.innerHTML = ''; 
+        }
+
+        function startKungssGame() {
+            startKungssGameBtn.disabled = true;
+            kungssCurrentRound = 0;
+            runKungssRound();
+        }
+
+        function runKungssRound() {
+            kungssCurrentRound++;
+            if (kungssCurrentRound > KUNGSS_ROUNDS) {
+                // 게임 성공
+                clearTimeout(kungssTimerId);
+                addCoin(KUNGSS_REWARD);
+                kungssStatus.innerHTML = `<span style="color: green; font-weight: bold;">🎉 3라운드 성공! ${KUNGSS_REWARD} 코인 획득!</span>`;
+                kungssTarget.textContent = '게임 승리!';
+                kungssButtons.innerHTML = '';
+                setTimeout(resetKungssGame, 3000);
+                return;
+            }
+
+            // 라운드 준비
+            kungssUserInput = []; 
+            kungssStatus.textContent = `라운드 ${kungssCurrentRound} / ${KUNGSS_ROUNDS} (입력 0/${KUNGSS_SEQUENCE_LENGTH})`;
+
+            // 1. 랜덤 단어 시퀀스 3개 선택 (정답)
+            let sequence = [];
+            for (let i = 0; i < KUNGSS_SEQUENCE_LENGTH; i++) {
+                const randomIndex = Math.floor(Math.random() * KUNGSS_WORDS.length);
+                sequence.push(KUNGSS_WORDS[randomIndex]);
+            }
+            kungssTargetSequence = sequence;
+            kungssTarget.textContent = `▶️ ${kungssTargetSequence.join(' | ')} ◀️`; 
+
+            // 2. 버튼에 표시될 단어 4개 선택 (정답 3개 + 오답 1개)
+            let buttonWords = [...new Set(kungssTargetSequence)]; 
+
+            // 오답 단어 1개 추가
+            let availableMissWords = KUNGSS_WORDS.filter(word => !kungssTargetSequence.includes(word));
+            if (availableMissWords.length > 0 && buttonWords.length < 4) {
+                const randomMissIndex = Math.floor(Math.random() * availableMissWords.length);
+                buttonWords.push(availableMissWords[randomMissIndex]);
+            }
+            
+            // 버튼 개수가 4개 미만인 경우 (단어 목록이 적을 때) 대비: 다른 단어를 중복해서 추가
+            while(buttonWords.length < 4 && KUNGSS_WORDS.length >= 4) {
+                const randomIndex = Math.floor(Math.random() * KUNGSS_WORDS.length);
+                const wordToAdd = KUNGSS_WORDS[randomIndex];
+                if (!buttonWords.includes(wordToAdd)) {
+                     buttonWords.push(wordToAdd);
+                }
+            }
+
+
+            // 3. 단어 순서 섞기 (버튼 위치 무작위화)
+            buttonWords.sort(() => Math.random() - 0.5);
+
+            // 4. 버튼 영역 업데이트 및 활성화
+            kungssButtons.innerHTML = '';
+            buttonWords.forEach(word => {
+                const btn = document.createElement('button');
+                btn.classList.add('kungss-btn');
+                btn.textContent = word;
+                btn.dataset.word = word;
+                btn.disabled = false; 
+                btn.addEventListener('click', handleKungssButtonClick);
+                kungssButtons.appendChild(btn);
+            });
+
+
+            // 5. 타이머 시작
+            let timeLeft = KUNGSS_TIME_LIMIT; // ✅ 5초 시작
+            kungssTimer.textContent = `시간: ${timeLeft}초`;
+
+            clearTimeout(kungssTimerId);
+            kungssTimerId = setInterval(() => {
+                timeLeft--;
+                kungssTimer.textContent = `시간: ${timeLeft}초`;
+                if (timeLeft <= 0) {
+                    // 시간 초과
+                    clearInterval(kungssTimerId);
+                    failKungssGame(`시간 초과! 정답은 "${kungssTargetSequence.join(' | ')}"였습니다.`);
+                }
+            }, 1000);
+        }
+
+        function handleKungssButtonClick(event) {
+            const clickedWord = event.currentTarget.dataset.word;
+            
+            // 1. 사용자가 누른 단어 입력 배열에 추가
+            kungssUserInput.push(clickedWord);
+            
+            // 상태 표시 업데이트
+            kungssStatus.textContent = `입력 중: ${kungssUserInput.length} / ${KUNGSS_SEQUENCE_LENGTH}`;
+
+            // 2. 3개 단어를 모두 입력했을 경우 비교
+            if (kungssUserInput.length >= KUNGSS_SEQUENCE_LENGTH) {
+                clearInterval(kungssTimerId);
+                kungssButtons.querySelectorAll('.kungss-btn').forEach(btn => btn.disabled = true); 
+
+                const userInputStr = kungssUserInput.join(' | ');
+                const targetStr = kungssTargetSequence.join(' | ');
+                
+                if (userInputStr === targetStr) {
+                    // 정답!
+                    kungssStatus.innerHTML = `<span style="color: green; font-weight: bold;">✅ 라운드 ${kungssCurrentRound} 성공!</span>`;
+                    kungssTarget.textContent = '정답 시퀀스 입력 성공!';
+                    setTimeout(runKungssRound, 1500); 
+                } else {
+                    // 오답
+                    failKungssGame(`틀렸습니다! 정답은 "${targetStr}"였습니다. 당신의 입력은 "${userInputStr}"였습니다.`);
+                }
+            }
+            // 3개를 입력하지 않았으면 다음 입력을 기다림 (타이머는 계속 진행)
+        }
+
+        function failKungssGame(message) {
+            clearInterval(kungssTimerId);
+            kungssStatus.innerHTML = `<span style="color: red; font-weight: bold;">😭 게임 실패</span>`;
+            kungssTarget.textContent = message;
+            kungssButtons.querySelectorAll('.kungss-btn').forEach(btn => btn.disabled = true);
+            setTimeout(resetKungssGame, 3000); 
+        }
+
+
+        // ========================================================
+        // VII. 화면 전환 및 초기화 (동일)
+        // ========================================================
+
+        function switchScreen(screenId) {
+            screens.forEach(screen => { screen.classList.remove('active'); });
+            const activeScreen = document.getElementById(screenId);
+            if (activeScreen) { activeScreen.classList.add('active'); }
+
+            navButtons.forEach(button => {
+                button.classList.toggle('active', button.dataset.screen === screenId);
+            });
+
+            if (screenId === 'collection-screen') { displayCollection(); }
+            if (screenId === 'coin-screen') { 
+                initSheepGame();
+                resetKungssGame(); 
+            }
+        }
+
+        function handleNavClick(event) {
+            const screenId = event.currentTarget.dataset.screen;
+            switchScreen(screenId);
+        }
+
+        function initializeApp() {
+            loadUserState();
+            updateCoinDisplay();
+            
+            // ✅ 가챠 버튼 이벤트 리스너 변경 없음 (쿨타임 로직만 추가됨)
+            gachaButton.addEventListener('click', handleGacha); 
+            document.getElementById('clear-button').addEventListener('click', clearCollection);
+            startSheepBetBtn.addEventListener('click', startSheepBet);
+            startKungssGameBtn.addEventListener('click', startKungssGame);
+
+            navButtons.forEach(button => {
+                button.addEventListener('click', handleNavClick);
+            });
+
+            initSheepGame();
+            initKungssGame();
+            
+            switchScreen('gacha-screen');
+        }
+
+        window.onload = initializeApp;
+    </script>
+</body>
+</html>
+        }
+        .sheep-wool.selected {
+            border-color: #e53935;
+            border-width: 4px;
+        }
+        .rainbow-colors {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .color-option {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 1px solid #ccc;
+        }
+        .color-option.active {
+            border-color: #000;
+            border-width: 3px;
+        }
+        .sheep-result-display {
+            margin-top: 15px;
+            padding: 10px;
+            border: 1px dashed #777;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .color-red { background-color: #e53935; }
+        .color-orange { background-color: #fb8c00; }
+        .color-yellow { background-color: #fdd835; }
+        .color-green { background-color: #43a047; }
+        .color-blue { background-color: #1e88e5; }
+        .color-indigo { background-color: #3949ab; }
+        .color-violet { background-color: #8e24aa; }
+
         /* ======================== 쿵쓰쿵쓰 스타일 ======================== */
         #kungss-challenge {
             text-align: center;
