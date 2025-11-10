@@ -306,7 +306,24 @@ h1 {
 .rank-UR, .gacha-item.rank-UR { background-color: #9c27b0; color: white; border: 1px solid #7b1fa2; }
 .rank-LR, .gacha-item.rank-LR { background-color: #d81b60; color: white; border: 1px solid #ad1457; }
 .rank-M, .gacha-item.rank-M { background-color: #00bcd4; color: white; border: 1px solid #0097a7; }
+
+/* --- [신규] M+ 등급 스타일 --- */
+@keyframes rainbowShine {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+.rank-M-PLUS, .gacha-item.rank-M-PLUS {
+    background: linear-gradient(270deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff);
+    background-size: 400% 400%;
+    animation: rainbowShine 3s ease infinite;
+    color: white;
+    font-weight: bold;
+    border: 2px solid #fff;
+    text-shadow: 0 0 5px #000, 0 0 10px #000;
+}
 /* --- */
+
 .clear-btn { background-color: #bdbdbd; color: #333; border: none; padding: 8px 15px; border-radius: 5px; margin-top: 15px; cursor: pointer; font-size: 0.9em; }
 .floating-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 500px; background-color: #333; box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2); display: flex; justify-content: space-around; padding: 10px 0; z-index: 1000; border-top-left-radius: 10px; border-top-right-radius: 10px; }
 .nav-button { background: none; border: none; color: white; font-size: 0.9em; padding: 10px 5px; cursor: pointer; flex-grow: 1; transition: color 0.2s, background-color 0.2s; display: flex; flex-direction: column; align-items: center; }
@@ -517,12 +534,14 @@ textarea.backup-restore {
     const ENHANCE_COST = 500;
     const PROTECTION_COST = 500;
 
-    // 등급 및 캐릭터 정의 (새로운 목록 및 확률 적용)
+    // [수정] M+ 등급은 RARITY_ORDER에서 제외 (별도 처리)
     const RARITY_ORDER = ["M", "LR", "UR", "SSR", "SR", "R", "A", "B", "C", "D", "N"];
         
     // [수정] 캐릭터 정의: probability는 이제 이 등급 내에서의 *가중치*로 사용됩니다.
-    // (현재는 모든 캐릭터가 동일 가중치를 가지지만, 향후 확장 가능)
     const characters = [
+        // [신규] M+ 버그잡기 등급
+        { name: "카투사에서 버그 쓴 남정네 양식어들 영어로 헤으응하게 만드는 두현이!!", rarity: "M+버그잡기", probability: 1, colorClass: "rank-M-PLUS" },
+
         // M (Myth)
         { name: "두현, 민초의 신. 남정네 없는 세계의 창조자.", rarity: "M", probability: 1, colorClass: "rank-M" },
 
@@ -646,7 +665,7 @@ textarea.backup-restore {
         { name: "더빙 연습 중 하품하는 두현", rarity: "N", probability: 1, colorClass: "rank-N" },
     ];
         
-    // [수정] 가챠 확률 정의 (기존 가중치 기반)
+    // [수정] M+ 등급은 BASE_GACHA_WEIGHTS에서 제외 (별도 처리)
     // N: 80, D: 60, C: 50, B: 40, A: 30, R: 20, SR: 10, SSR: 2, UR: 0.4, LR: 0.002, M: 0.0001
     // 총합: 292.4021
     const BASE_GACHA_WEIGHTS = {
@@ -665,6 +684,7 @@ textarea.backup-restore {
     const TOTAL_BASE_WEIGHT = 292.4021; // 모든 가중치의 합
     
     // [신규] 강화 레벨에 따른 추가 확률 (퍼센트: 1% = 0.01)
+    // [수정] M+ 등급은 ENHANCE_BONUS_RATES에서 제외 (별도 처리)
     const ENHANCE_BONUS_RATES = {
         N: 0.02,   // 2%
         D: 0.03,   // 3%
@@ -854,36 +874,50 @@ textarea.backup-restore {
     // IV. 가챠/컬렉션 로직
     // ========================================================
 
-    // [수정] conductGacha: 강화 레벨에 따른 확률 변동 로직
+    // [수정] conductGacha: M+ 등급 특별 처리 로직 추가
     function conductGacha() {
-        // 1. 현재 강화 레벨로 마일스톤 계산
+        // [신규] 1. M+ 등급 특별 확률 체크 (0.000...01%)
+        // 이 로직은 강화 레벨(milestones) 계산 *전에* 수행되어야 함.
+        const specialRoll = Math.random();
+        const M_PLUS_PROBABILITY = 1e-26; // 1 * 10^-26 (요청하신 0.000...01%)
+
+        if (specialRoll < M_PLUS_PROBABILITY) {
+            const specialChar = characters.find(c => c.rarity === "M+버그잡기");
+            if (specialChar) {
+                return specialChar; // M+ 당첨! 즉시 반환
+            }
+        }
+        
+        // --- M+ 등급이 당첨되지 않은 경우, 기존 로직 수행 ---
+
+        // 2. 현재 강화 레벨로 마일스톤 계산
         const milestones = Math.floor(userState.swordLevel / 20);
         
         let adjustedProbs = {};
         let totalAdjustedProb = 0;
 
-        // 2. 모든 등급에 대해 새로운 확률 계산
+        // 3. (M+ 제외) 모든 등급에 대해 새로운 확률 계산
         RARITY_ORDER.forEach(rarity => {
-            // 2-1. 기본 확률 (가중치 / 총 가중치)
+            // 3-1. 기본 확률 (가중치 / 총 가중치)
             const baseProb = (BASE_GACHA_WEIGHTS[rarity] || 0) / TOTAL_BASE_WEIGHT;
             
-            // 2-2. 보너스 확률 (등급별 보너스 * 마일스톤)
+            // 3-2. 보너스 확률 (등급별 보너스 * 마일스톤)
             const bonusProb = (ENHANCE_BONUS_RATES[rarity] || 0) * milestones;
             
-            // 2-3. 새로운 확률 = 기본 확률 + 보너스 확률
+            // 3-3. 새로운 확률 = 기본 확률 + 보너스 확률
             const newProb = baseProb + bonusProb;
             
             adjustedProbs[rarity] = newProb;
             totalAdjustedProb += newProb; // 모든 새 확률의 총합 (1이 넘을 수 있음)
         });
 
-        // 3. 확률 정규화 (모든 확률의 합이 1(100%)이 되도록 조정)
-        const random = Math.random(); // 0 ~ 1 사이의 값
+        // 4. 확률 정규화 (모든 확률의 합이 1(100%)이 되도록 조정)
+        const random = Math.random(); // 0 ~ 1 사이의 값 (메인 뽑기용)
         let cumulativeProb = 0;
         let selectedRarity = "N"; // 기본값
         
         for (const rarity of RARITY_ORDER) {
-            // 3-1. 정규화된 확률 (현재 등급 확률 / 새 확률 총합)
+            // 4-1. 정규화된 확률 (현재 등급 확률 / 새 확률 총합)
             const normalizedProb = adjustedProbs[rarity] / totalAdjustedProb;
             cumulativeProb += normalizedProb;
             
@@ -893,7 +927,7 @@ textarea.backup-restore {
             }
         }
 
-        // 4. 선택된 등급(selectedRarity) 내에서 캐릭터 무작위 추첨
+        // 5. 선택된 등급(selectedRarity) 내에서 캐릭터 무작위 추첨
         const possibleChars = characters.filter(c => c.rarity === selectedRarity);
         
         // 등급 내 캐릭터가 없는 경우 N등급에서 추첨 (오류 방지)
@@ -950,36 +984,28 @@ textarea.backup-restore {
         // 1. 버튼 비활성화 (뽑기 처리 중)
         gachaButton.disabled = true;
         
-        // 2. [삭제] 애니메이션 관련 코드
-        // resultDisplay.style.display = 'none';
-        // setupGachaReel(); // 릴 초기화
-        // gachaAnimationContainer.style.display = 'block';
-        // void gachaReel.offsetWidth; 
-        // gachaReel.classList.add('spinning');
-        
         // [추가] 결과창이 항상 보이도록 보장
         resultDisplay.style.display = 'block';
 
-        // 3. [삭제] setTimeout 제거
-        
-        // 4. [핵심] 실제 뽑기 로직은 바로 실행
+        // 2. [핵심] 실제 뽑기 로직은 바로 실행
         const pulledCharacter = conductGacha();
 
-        // 5. 결과 바로 표시
+        // 3. 결과 바로 표시
         resultDisplay.innerHTML = `
             🎉 **축하합니다!** 🎉<br>
             <span class="character-tag ${pulledCharacter.colorClass}">${pulledCharacter.rarity}</span> 
             <strong>${pulledCharacter.name}</strong>을(를) 획득했습니다!
         `;
         
-        // 6. 컬렉션에 저장
+        // 4. 컬렉션에 저장
         userState.collection.push(pulledCharacter.name);
         saveUserState();
         
-        // 7. [추가] 버튼 즉시 다시 활성화
+        // 5. [추가] 버튼 즉시 다시 활성화
         gachaButton.disabled = false;
     }
 
+    // [수정] displayCollection: M+ 등급을 포함한 모든 등급을 동적으로 표시
     function displayCollection() { 
         const collection = userState.collection;
         collectionList.innerHTML = ''; 
@@ -992,18 +1018,31 @@ textarea.backup-restore {
         }
 
         const countsByRarity = {};
-        RARITY_ORDER.forEach(rarity => { countsByRarity[rarity] = []; });
-            
+        
+        // [수정] RARITY_ORDER에 의존하지 않고, 뽑은 캐릭터 기준으로 동적 그룹 생성
         collection.forEach(name => {
             const charInfo = characters.find(c => c.name === name);
             if (charInfo) {
-                const existing = countsByRarity[charInfo.rarity].find(item => item.name === name);
-                if (existing) { existing.count++; } 
-                else { countsByRarity[charInfo.rarity].push({ name: name, count: 1, colorClass: charInfo.colorClass }); }
+                const rarity = charInfo.rarity;
+                // 해당 등급 그룹이 없으면 새로 생성
+                if (!countsByRarity[rarity]) {
+                    countsByRarity[rarity] = [];
+                }
+                
+                const existing = countsByRarity[rarity].find(item => item.name === name);
+                if (existing) { 
+                    existing.count++; 
+                } else { 
+                    countsByRarity[rarity].push({ name: name, count: 1, colorClass: charInfo.colorClass }); 
+                }
             }
         });
 
-        RARITY_ORDER.forEach(rarity => {
+        // [신규] 컬렉션에 표시할 등급 순서 (M+가 최상단)
+        const displayRarityOrder = ["M+버그잡기", ...RARITY_ORDER];
+
+        // [수정] 정의된 순서(displayRarityOrder)대로 섹션 생성
+        displayRarityOrder.forEach(rarity => {
             const charList = countsByRarity[rarity];
             if (charList && charList.length > 0) {
                 const sectionDiv = document.createElement('div');
