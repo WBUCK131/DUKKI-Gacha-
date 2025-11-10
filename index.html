@@ -490,7 +490,7 @@ textarea.backup-restore {
         <button id="restore-button" class="btn-setting restore">데이터 불러오기</button>
         <p style="font-size: 0.9em; color: red; margin-top: 10px;">
             ⚠️ **주의:** 현재 모든 진행 상황이 덮어씌워집니다!
-        </p>
+        </D>
     </div>
     
     <p id="settings-status" style="color: green;"></p>
@@ -774,7 +774,7 @@ textarea.backup-restore {
     const navButtons = document.querySelectorAll('.nav-button');
     const emptyCollectionMessage = document.getElementById('empty-collection-message');
     
-    // [신규] 가챠 애니메이션 DOM
+    // [신규] 가챠 애니메이션 DOM (참조는 남겨둠)
     const gachaAnimationContainer = document.getElementById('gacha-animation-container');
     const gachaReel = document.getElementById('gacha-reel');
         
@@ -920,7 +920,7 @@ textarea.backup-restore {
 
     // [삭제] startGachaCooldown 함수
     
-    // [신규] 가챠 릴(애니메이션) 생성
+    // [신규] 가챠 릴(애니메이션) 생성 (함수는 남아있지만 handleGacha에서 호출 안 함)
     function setupGachaReel() {
         gachaReel.innerHTML = '';
         gachaReel.classList.remove('spinning');
@@ -940,59 +940,44 @@ textarea.backup-restore {
         }
     }
 
-    // [수정] handleGacha: 쿨타임 로직 제거, 애니메이션 후 버튼 활성화
+    // [수정] handleGacha: 애니메이션 로직 제거, 즉시 뽑기
     function handleGacha() {
-        // [삭제] 쿨타임 체크
-        /*
-        if (isGachaOnCooldown) {
-            resultDisplay.innerHTML = '<p style="color: red;">⏳ 잠시만요! 쿨타임 중입니다.</p>';
-            return;
-        }
-        */
-
         if (!subtractCoin(GACHA_COST)) {
             resultDisplay.innerHTML = `<p style="color: red;">❌ 코인이 부족합니다! (필요: ${GACHA_COST})</p>`;
             return;
         }
         
-        // 1. 버튼 비활성화
-        gachaButton.disabled = true; // 애니메이션 중 비활성화
-        // [삭제] startGachaCooldown();
+        // 1. 버튼 비활성화 (뽑기 처리 중)
+        gachaButton.disabled = true;
         
-        // 2. 결과창 숨기고 애니메이션 보이기
-        resultDisplay.style.display = 'none';
-        setupGachaReel(); // 릴 초기화
-        gachaAnimationContainer.style.display = 'block';
+        // 2. [삭제] 애니메이션 관련 코드
+        // resultDisplay.style.display = 'none';
+        // setupGachaReel(); // 릴 초기화
+        // gachaAnimationContainer.style.display = 'block';
+        // void gachaReel.offsetWidth; 
+        // gachaReel.classList.add('spinning');
         
-        // 3. 애니메이션 시작 (CSS 클래스 추가)
-        void gachaReel.offsetWidth; 
-        gachaReel.classList.add('spinning');
+        // [추가] 결과창이 항상 보이도록 보장
+        resultDisplay.style.display = 'block';
 
-        // 4. [핵심] 실제 뽑기 로직은 미리 실행
+        // 3. [삭제] setTimeout 제거
+        
+        // 4. [핵심] 실제 뽑기 로직은 바로 실행
         const pulledCharacter = conductGacha();
 
-        // 5. 애니메이션 종료 시점(2.5초 뒤)에 결과 표시
-        setTimeout(() => {
-            // 5-1. 애니메이션 숨기고 결과창 보이기
-            gachaAnimationContainer.style.display = 'none';
-            resultDisplay.style.display = 'block';
-            gachaReel.classList.remove('spinning'); // 스피닝 클래스 제거
-
-            // 5-2. 결과 표시
-            resultDisplay.innerHTML = `
-                🎉 **축하합니다!** 🎉<br>
-                <span class="character-tag ${pulledCharacter.colorClass}">${pulledCharacter.rarity}</span> 
-                <strong>${pulledCharacter.name}</strong>을(를) 획득했습니다!
-            `;
-            
-            // 5-3. 컬렉션에 저장
-            userState.collection.push(pulledCharacter.name);
-            saveUserState();
-            
-            // [추가] 애니메이션 종료 후 버튼 다시 활성화
-            gachaButton.disabled = false;
-            
-        }, 2500); // 2.5초 (CSS 애니메이션 시간과 일치)
+        // 5. 결과 바로 표시
+        resultDisplay.innerHTML = `
+            🎉 **축하합니다!** 🎉<br>
+            <span class="character-tag ${pulledCharacter.colorClass}">${pulledCharacter.rarity}</span> 
+            <strong>${pulledCharacter.name}</strong>을(를) 획득했습니다!
+        `;
+        
+        // 6. 컬렉션에 저장
+        userState.collection.push(pulledCharacter.name);
+        saveUserState();
+        
+        // 7. [추가] 버튼 즉시 다시 활성화
+        gachaButton.disabled = false;
     }
 
     function displayCollection() { 
