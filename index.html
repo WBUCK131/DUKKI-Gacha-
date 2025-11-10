@@ -918,4 +918,643 @@ textarea.backup-restore {
         return possibleChars[0]; // 만약의 경우 마지막 캐릭터 반환
     }
 
+    // [삭제] startGachaCooldown 함수
     
+    // [신규] 가챠 릴(애니메이션) 생성
+    function setupGachaReel() {
+        gachaReel.innerHTML = '';
+        gachaReel.classList.remove('spinning');
+        
+        // 50개의 랜덤 아이템 생성
+        for (let i = 0; i < 50; i++) {
+            const item = document.createElement('span');
+            item.classList.add('gacha-item');
+            
+            // CSS 스타일 적용을 위해 랜덤 등급 부여
+            const randomRarityIndex = Math.floor(Math.random() * RARITY_ORDER.length);
+            const randomRarity = RARITY_ORDER[randomRarityIndex];
+            item.classList.add(`rank-${randomRarity}`);
+            item.textContent = `????`;
+            
+            gachaReel.appendChild(item);
+        }
+    }
+
+    // [수정] handleGacha: 쿨타임 로직 제거, 애니메이션 후 버튼 활성화
+    function handleGacha() {
+        // [삭제] 쿨타임 체크
+        /*
+        if (isGachaOnCooldown) {
+            resultDisplay.innerHTML = '<p style="color: red;">⏳ 잠시만요! 쿨타임 중입니다.</p>';
+            return;
+        }
+        */
+
+        if (!subtractCoin(GACHA_COST)) {
+            resultDisplay.innerHTML = `<p style="color: red;">❌ 코인이 부족합니다! (필요: ${GACHA_COST})</p>`;
+            return;
+        }
+        
+        // 1. 버튼 비활성화
+        gachaButton.disabled = true; // 애니메이션 중 비활성화
+        // [삭제] startGachaCooldown();
+        
+        // 2. 결과창 숨기고 애니메이션 보이기
+        resultDisplay.style.display = 'none';
+        setupGachaReel(); // 릴 초기화
+        gachaAnimationContainer.style.display = 'block';
+        
+        // 3. 애니메이션 시작 (CSS 클래스 추가)
+        void gachaReel.offsetWidth; 
+        gachaReel.classList.add('spinning');
+
+        // 4. [핵심] 실제 뽑기 로직은 미리 실행
+        const pulledCharacter = conductGacha();
+
+        // 5. 애니메이션 종료 시점(2.5초 뒤)에 결과 표시
+        setTimeout(() => {
+            // 5-1. 애니메이션 숨기고 결과창 보이기
+            gachaAnimationContainer.style.display = 'none';
+            resultDisplay.style.display = 'block';
+            gachaReel.classList.remove('spinning'); // 스피닝 클래스 제거
+
+            // 5-2. 결과 표시
+            resultDisplay.innerHTML = `
+                🎉 **축하합니다!** 🎉<br>
+                <span class="character-tag ${pulledCharacter.colorClass}">${pulledCharacter.rarity}</span> 
+                <strong>${pulledCharacter.name}</strong>을(를) 획득했습니다!
+            `;
+            
+            // 5-3. 컬렉션에 저장
+            userState.collection.push(pulledCharacter.name);
+            saveUserState();
+            
+            // [추가] 애니메이션 종료 후 버튼 다시 활성화
+            gachaButton.disabled = false;
+            
+        }, 2500); // 2.5초 (CSS 애니메이션 시간과 일치)
+    }
+
+    function displayCollection() { 
+        const collection = userState.collection;
+        collectionList.innerHTML = ''; 
+
+        if (collection.length === 0) {
+            emptyCollectionMessage.style.display = 'block';
+            return;
+        } else {
+            emptyCollectionMessage.style.display = 'none';
+        }
+
+        const countsByRarity = {};
+        RARITY_ORDER.forEach(rarity => { countsByRarity[rarity] = []; });
+            
+        collection.forEach(name => {
+            const charInfo = characters.find(c => c.name === name);
+            if (charInfo) {
+                const existing = countsByRarity[charInfo.rarity].find(item => item.name === name);
+                if (existing) { existing.count++; } 
+                else { countsByRarity[charInfo.rarity].push({ name: name, count: 1, colorClass: charInfo.colorClass }); }
+            }
+        });
+
+        RARITY_ORDER.forEach(rarity => {
+            const charList = countsByRarity[rarity];
+            if (charList && charList.length > 0) {
+                const sectionDiv = document.createElement('div');
+                sectionDiv.classList.add('collection-section');
+                const title = document.createElement('h4');
+                title.textContent = `${rarity} 등급 (총 ${charList.reduce((sum, item) => sum + item.count, 0)}개)`;
+                sectionDiv.appendChild(title);
+                const container = document.createElement('div');
+                container.classList.add('collection-container');
+
+                charList.forEach(item => {
+                    const tag = document.createElement('span');
+                    tag.classList.add('character-tag', item.colorClass);
+                    tag.textContent = `${item.name} (x${item.count})`;
+                    container.appendChild(tag);
+                });
+
+                sectionDiv.appendChild(container);
+                collectionList.appendChild(sectionDiv);
+            }
+        });
+    }
+
+    function clearCollection() { 
+        if (confirm("정말로 컬렉션을 초기화하시겠습니까? 저장된 모든 캐릭터와 강화 레벨이 삭제됩니다.")) {
+            userState.collection = [];
+            userState.coins = 500;
+            userState.swordLevel = 0; // ✅ 강화 레벨 초기화
+            saveUserState();
+            updateCoinDisplay();
+            displayCollection();
+            updateEnhancementUI(); // ✅ 강화 UI도 업데이트
+            document.getElementById('result-display').innerHTML = '<p>컬렉션이 초기화되었습니다. 뽑기를 다시 시작하세요.</p>';
+        }
+    }
+        
+    // ========================================================
+    // V. 양털 도박 로직
+    // ========================================================
+
+    let userSheepPicks = new Array(5).fill(null); 
+    let selectedColor = RAINBOW_COLORS[0].name; 
+
+    function initSheepGame() {
+        // 1. 색상 팔레트 생성
+        colorPalette.innerHTML = '';
+        RAINBOW_COLORS.forEach(color => {
+            const option = document.createElement('div');
+            option.classList.add('color-option', color.class);
+            option.dataset.color = color.name;
+            option.addEventListener('click', () => { selectColorOption(color.name, option); });
+            colorPalette.appendChild(option);
+        });
+        selectColorOption(RAINBOW_COLORS[0].name, colorPalette.firstChild);
+
+        // 2. 양털 픽커 생성
+        sheepPickerArea.innerHTML = '';
+        for (let i = 0; i < 5; i++) {
+            const sheep = document.createElement('div');
+            sheep.classList.add('sheep-wool');
+            sheep.dataset.index = i;
+            sheep.addEventListener('click', () => { selectSheepColor(i, sheep); });
+            sheepPickerArea.appendChild(sheep);
+        }
+            
+        // 3. 초기 상태 업데이트
+        userSheepPicks.fill(null);
+        updateSheepDisplay();
+        sheepResult.textContent = '무지개색 중 5가지 색을 양털에 선택해 주세요.';
+    }
+        
+    function selectColorOption(colorName, element) {
+        document.querySelectorAll('.color-option').forEach(el => el.classList.remove('active'));
+        element.classList.add('active');
+        selectedColor = colorName;
+    }
+
+    function selectSheepColor(index, sheepElement) {
+        userSheepPicks[index] = selectedColor;
+            
+        sheepElement.className = 'sheep-wool selected'; 
+        const colorData = RAINBOW_COLORS.find(c => c.name === selectedColor);
+        if (colorData) {
+            sheepElement.classList.add(colorData.class);
+        }
+            
+        updateSheepDisplay();
+    }
+
+    function updateSheepDisplay() {
+        const displayNames = userSheepPicks.map(name => name ? name : '??');
+        selectedSheepColorsDisplay.textContent = displayNames.join(', ');
+            
+        document.querySelectorAll('.sheep-wool').forEach((sheep, index) => {
+            const selected = userSheepPicks[index];
+            sheep.className = 'sheep-wool';
+            if (selected) {
+                sheep.classList.add('selected');
+                const colorData = RAINBOW_COLORS.find(c => c.name === selected);
+                if (colorData) {
+                    sheep.classList.add(colorData.class);
+                }
+            }
+        });
+    }
+
+    function startSheepBet() {
+        if (!subtractCoin(SHEEP_BET_COST)) {
+            sheepResult.innerHTML = `<span style="color:red;">❌ 코인이 부족합니다! (필요: ${SHEEP_BET_COST})</span>`;
+            return;
+        }
+
+        if (userSheepPicks.includes(null)) {
+            addCoin(SHEEP_BET_COST); 
+            sheepResult.innerHTML = '<span style="color:red;">❌ 5개의 양털 색깔을 모두 선택해야 합니다.</span>';
+            return;
+        }
+
+        const randomResult = [];
+        for (let i = 0; i < 5; i++) {
+            const randomIndex = Math.floor(Math.random() * RAINBOW_COLORS.length);
+            randomResult.push(RAINBOW_COLORS[randomIndex].name);
+        }
+
+        let matchedCount = 0;
+        for (let i = 0; i < 5; i++) {
+            if (userSheepPicks[i] === randomResult[i]) {
+                matchedCount++;
+            }
+        }
+
+        sheepResult.innerHTML = `
+            <p>당신의 선택: ${userSheepPicks.join(', ')}</p>
+            <p>랜덤 결과: ${randomResult.join(', ')}</p>
+            <p style="font-size: 1.3em; margin: 10px 0;">✅ **${matchedCount}개** 일치!</p>
+        `;
+
+        let reward = SHEEP_REWARD_MAP[matchedCount] || 0; 
+        let resultText = '';
+
+        if (reward > 0) {
+            addCoin(reward);
+            resultText = `<span style="color: green; font-weight: bold;">🎉 승리! ${reward} 코인 획득! (현재 ${userState.coins})</span>`;
+        } else {
+            resultText = `<span style="color: red; font-weight: bold;">😭 패배! ${SHEEP_BET_COST} 코인을 잃었습니다. (현재 ${userState.coins})</span>`;
+        }
+
+        sheepResult.innerHTML += resultText;
+            
+        document.querySelectorAll('.sheep-wool').forEach((sheep, index) => {
+            const resultColorName = randomResult[index];
+            const resultColorData = RAINBOW_COLORS.find(c => c.name === resultColorName);
+                
+            sheep.className = 'sheep-wool selected'; 
+            sheep.classList.add(resultColorData.class);
+                
+            if (userSheepPicks[index] === randomResult[index]) {
+                sheep.style.border = '4px solid gold';
+            } else {
+                sheep.style.border = '4px solid red';
+            }
+        });
+        setTimeout(() => {
+            document.querySelectorAll('.sheep-wool').forEach(s => s.style.border = '4px solid #333');
+        }, 3000); 
+    }
+
+    // ========================================================
+    // VI. 쿵쓰쿵쓰 게임 로직
+    // ========================================================
+
+    function initKungssGame() {
+        resetKungssGame();
+    }
+
+    function resetKungssGame() {
+        kungssCurrentRound = 0;
+        kungssTargetSequence = [];
+        kungssUserInput = [];
+        kungssStatus.textContent = `준비 (총 ${KUNGSS_ROUNDS} 라운드, 단어 3개 순서 입력)`;
+        kungssTimer.textContent = `시간: ${KUNGSS_TIME_LIMIT}초`; 
+        kungssTarget.textContent = '단어 시퀀스 대기 중...';
+        startKungssGameBtn.disabled = false;
+        kungssButtons.innerHTML = ''; 
+    }
+
+    function startKungssGame() {
+        startKungssGameBtn.disabled = true;
+        kungssCurrentRound = 0;
+        runKungssRound();
+    }
+
+    function runKungssRound() {
+        kungssCurrentRound++;
+        if (kungssCurrentRound > KUNGSS_ROUNDS) {
+            // 게임 성공
+            clearTimeout(kungssTimerId);
+            addCoin(KUNGSS_REWARD);
+            kungssStatus.innerHTML = `<span style="color: green; font-weight: bold;">🎉 3라운드 성공! ${KUNGSS_REWARD} 코인 획득!</span>`;
+            kungssTarget.textContent = '게임 승리!';
+            kungssButtons.innerHTML = '';
+            setTimeout(resetKungssGame, 3000);
+            return;
+        }
+
+        // 라운드 준비
+        kungssUserInput = []; 
+        kungssStatus.textContent = `라운드 ${kungssCurrentRound} / ${KUNGSS_ROUNDS} (입력 0/${KUNGSS_SEQUENCE_LENGTH})`;
+
+        // 1. 랜덤 단어 시퀀스 3개 선택 (정답)
+        let sequence = [];
+        for (let i = 0; i < KUNGSS_SEQUENCE_LENGTH; i++) {
+            const randomIndex = Math.floor(Math.random() * KUNGSS_WORDS.length);
+            sequence.push(KUNGSS_WORDS[randomIndex]);
+        }
+        kungssTargetSequence = sequence;
+        kungssTarget.textContent = `▶️ ${kungssTargetSequence.join(' | ')} ◀️`; 
+
+        // 2. 버튼에 표시될 단어 4개 선택 (정답 3개 + 오답 1개)
+        let buttonWords = [...new Set(kungssTargetSequence)]; 
+
+        // 오답 단어 1개 추가
+        let availableMissWords = KUNGSS_WORDS.filter(word => !kungssTargetSequence.includes(word));
+        if (availableMissWords.length > 0 && buttonWords.length < 4) {
+            const randomMissIndex = Math.floor(Math.random() * availableMissWords.length);
+            buttonWords.push(availableMissWords[randomMissIndex]);
+        }
+            
+        while(buttonWords.length < 4 && KUNGSS_WORDS.length >= 4) {
+            const randomIndex = Math.floor(Math.random() * KUNGSS_WORDS.length);
+            const wordToAdd = KUNGSS_WORDS[randomIndex];
+            if (!buttonWords.includes(wordToAdd)) {
+                 buttonWords.push(wordToAdd);
+            }
+        }
+
+        buttonWords.sort(() => Math.random() - 0.5);
+
+        kungssButtons.innerHTML = '';
+        buttonWords.forEach(word => {
+            const btn = document.createElement('button');
+            btn.classList.add('kungss-btn');
+            btn.textContent = word;
+            btn.dataset.word = word;
+            btn.disabled = false; 
+            btn.addEventListener('click', handleKungssButtonClick);
+            kungssButtons.appendChild(btn);
+        });
+
+        let timeLeft = KUNGSS_TIME_LIMIT;
+        kungssTimer.textContent = `시간: ${timeLeft}초`;
+
+        clearTimeout(kungssTimerId);
+        kungssTimerId = setInterval(() => {
+            timeLeft--;
+            kungssTimer.textContent = `시간: ${timeLeft}초`;
+            if (timeLeft <= 0) {
+                clearInterval(kungssTimerId);
+                failKungssGame(`시간 초과! 정답은 "${kungssTargetSequence.join(' | ')}"였습니다.`);
+            }
+        }, 1000);
+    }
+
+    function handleKungssButtonClick(event) {
+        const clickedWord = event.currentTarget.dataset.word;
+            
+        kungssUserInput.push(clickedWord);
+        kungssStatus.textContent = `입력 중: ${kungssUserInput.length} / ${KUNGSS_SEQUENCE_LENGTH}`;
+
+        if (kungssUserInput.length >= KUNGSS_SEQUENCE_LENGTH) {
+            clearInterval(kungssTimerId);
+            kungssButtons.querySelectorAll('.kungss-btn').forEach(btn => btn.disabled = true); 
+
+            const userInputStr = kungssUserInput.join(' | ');
+            const targetStr = kungssTargetSequence.join(' | ');
+                
+            if (userInputStr === targetStr) {
+                kungssStatus.innerHTML = `<span style="color: green; font-weight: bold;">✅ 라운드 ${kungssCurrentRound} 성공!</span>`;
+                kungssTarget.textContent = '정답 시퀀스 입력 성공!';
+                setTimeout(runKungssRound, 1500); 
+            } else {
+                failKungssGame(`틀렸습니다! 정답은 "${targetStr}"였습니다. 당신의 입력은 "${userInputStr}"였습니다.`);
+            }
+        }
+    }
+
+    function failKungssGame(message) {
+        clearInterval(kungssTimerId);
+        kungssStatus.innerHTML = `<span style="color: red; font-weight: bold;">😭 게임 실패</span>`;
+        kungssTarget.textContent = message;
+        kungssButtons.querySelectorAll('.kungss-btn').forEach(btn => btn.disabled = true);
+        setTimeout(resetKungssGame, 3000); 
+    }
+
+    // ========================================================
+    // VII. ⚔️ 강화 시스템 로직
+    // ========================================================
+
+    function getSwordName(level) {
+        if (level === 0) return "두현의 왕관 검 (민초빛)";
+        if (level >= 100) return ENHANCEMENT_STATS[100].name;
+        // 1~99강
+        return ENHANCEMENT_STATS[level].name;
+    }
+
+    function updateEnhanceButtonText() {
+        const isProtected = protectionCheckbox.checked;
+        let cost = ENHANCE_COST;
+        if (isProtected) {
+            cost += PROTECTION_COST;
+        }
+        enhanceButton.textContent = `강화 시도 (${cost} 코인)`;
+    }
+
+    function updateEnhancementUI() {
+        const level = userState.swordLevel;
+        currentSwordLevel.textContent = level;
+        currentSwordName.textContent = getSwordName(level);
+        
+        const targetLevel = level + 1;
+        if (targetLevel > 100) {
+            nextSwordLevel.textContent = "MAX";
+            nextSuccessRate.textContent = "0";
+            nextDestroyRate.textContent = "0";
+            enhanceButton.disabled = true;
+            enhanceButton.textContent = "최대 강화 달성";
+            enhanceResult.style.color = 'blue';
+            enhanceResult.textContent = "최고 레벨에 도달했습니다!";
+            protectionCheckbox.disabled = true;
+            protectionCheckbox.checked = false;
+        } else {
+            const stats = ENHANCEMENT_STATS[targetLevel];
+            nextSwordLevel.innerHTML = `${stats.level}강 (<span style="color: #00796b;">${stats.name}</span>)`;
+            nextSuccessRate.textContent = stats.success;
+            nextDestroyRate.textContent = stats.destroy;
+            enhanceButton.disabled = false;
+            protectionCheckbox.disabled = false;
+            updateEnhanceButtonText();
+        }
+    }
+
+    function handleEnhance() {
+        const currentLevel = userState.swordLevel;
+        const targetLevel = currentLevel + 1;
+        if (targetLevel > 100) return;
+
+        const isProtected = protectionCheckbox.checked;
+        let totalCost = ENHANCE_COST;
+        if (isProtected) {
+            totalCost += PROTECTION_COST;
+        }
+
+        if (!subtractCoin(totalCost)) {
+            enhanceResult.style.color = 'red';
+            enhanceResult.textContent = `❌ 코인이 부족합니다! (필요: ${totalCost})`;
+            return;
+        }
+
+        const stats = ENHANCEMENT_STATS[targetLevel];
+        const random = Math.random() * 100;
+
+        if (random < stats.success) {
+            // SUCCESS
+            userState.swordLevel++;
+            enhanceResult.style.color = 'green';
+            enhanceResult.textContent = `🎉 강화 성공! ${userState.swordLevel}강 (${ENHANCEMENT_STATS[userState.swordLevel].name}) 달성!`;
+        } else if (random < (stats.success + stats.destroy)) {
+            // DESTROYED
+            if (isProtected) {
+                enhanceResult.style.color = '#f57f17'; // '보호' 주황색
+                enhanceResult.textContent = `🛡️ 파괴 방지 발동! 강화 단계가 유지됩니다.`;
+                // Level stays the same
+            } else {
+                userState.swordLevel = 0; // Reset to 0
+                enhanceResult.style.color = 'red';
+                enhanceResult.textContent = `💥 파.괴.!! 검이 파괴되어 0강으로 초기화되었습니다...`;
+            }
+        } else {
+            // FAILURE (STAY)
+            enhanceResult.style.color = '#e53935'; // 두현 분노 색상
+            enhanceResult.textContent = "“왕관이 흔들렸다… 두현이 분노한다💢” (강화 실패, 단계 유지)";
+        }
+
+        saveUserState();
+        updateEnhancementUI();
+        // updateCoinDisplay()는 subtractCoin에서 이미 호출됩니다.
+    }
+
+    // ========================================================
+    // [신규] VIII. ⚙️ 설정 (백업/복구) 로직
+    // ========================================================
+
+    function handleBackup() {
+        try {
+            // 현재 메모리 상태를 localStorage에 먼저 저장
+            saveUserState(); 
+            const data = localStorage.getItem(USER_STATE_KEY);
+            if (data) {
+                backupDataDisplay.value = data;
+                settingsStatus.textContent = "✅ 백업 데이터 생성 완료! '복사' 버튼을 눌러주세요.";
+                settingsStatus.style.color = 'green';
+            } else {
+                throw new Error("저장된 데이터가 없습니다.");
+            }
+        } catch (e) {
+            settingsStatus.textContent = `❌ 백업 실패: ${e.message}`;
+            settingsStatus.style.color = 'red';
+        }
+    }
+
+    function copyBackupData() {
+        const data = backupDataDisplay.value;
+        if (!data) {
+            settingsStatus.textContent = "❌ 복사할 데이터가 없습니다. 먼저 백업을 생성하세요.";
+            settingsStatus.style.color = 'red';
+            return;
+        }
+        
+        // 최신 Clipboard API 사용 (더 안정적)
+        navigator.clipboard.writeText(data).then(() => {
+            settingsStatus.textContent = "✅ 클립보드에 복사되었습니다!";
+            settingsStatus.style.color = 'green';
+        }).catch(err => {
+            settingsStatus.textContent = "❌ 복사 실패. 수동으로 복사해주세요.";
+            settingsStatus.style.color = 'red';
+        });
+    }
+
+    function handleRestore() {
+        const dataToRestore = restoreDataInput.value;
+        if (!dataToRestore) {
+            settingsStatus.textContent = "❌ 불러올 데이터를 붙여넣어 주세요.";
+            settingsStatus.style.color = 'red';
+            return;
+        }
+
+        if (!confirm("정말로 데이터를 불러오시겠습니까? 현재 진행 상황은 모두 덮어씌워집니다.")) {
+            return;
+        }
+
+        try {
+            const parsedData = JSON.parse(dataToRestore);
+
+            // 데이터 유효성 검사 (필수 키가 있는지 확인)
+            if (parsedData.coins === undefined || parsedData.collection === undefined || parsedData.swordLevel === undefined) {
+                throw new Error("유효하지 않은 데이터 형식입니다.");
+            }
+
+            // 1. 메모리(userState)에 덮어쓰기
+            userState = parsedData;
+            // 2. localStorage에 저장
+            saveUserState();
+            
+            // 3. UI 즉시 업데이트
+            updateCoinDisplay();
+            updateEnhancementUI();
+            // (컬렉션은 탭 이동 시 업데이트됨)
+
+            settingsStatus.textContent = "✅ 데이터 복구 완료! 모든 데이터가 갱신되었습니다.";
+            settingsStatus.style.color = 'green';
+            restoreDataInput.value = ""; // 입력창 비우기
+
+        } catch (e) {
+            settingsStatus.textContent = `❌ 불러오기 실패: ${e.message}`;
+            settingsStatus.style.color = 'red';
+        }
+    }
+
+    // ========================================================
+    // IX. 화면 전환 및 초기화 (기존 VIII)
+    // ========================================================
+
+    function switchScreen(screenId) {
+        screens.forEach(screen => { screen.classList.remove('active'); });
+        const activeScreen = document.getElementById(screenId);
+        if (activeScreen) { activeScreen.classList.add('active'); }
+
+        navButtons.forEach(button => {
+            button.classList.toggle('active', button.dataset.screen === screenId);
+        });
+
+        if (screenId === 'collection-screen') { displayCollection(); }
+        if (screenId === 'coin-screen') { 
+            initSheepGame();
+            resetKungssGame(); 
+        }
+        // ✅ 강화 화면으로 전환 시 UI 업데이트
+        if (screenId === 'enhance-screen') {
+            updateEnhancementUI();
+            enhanceResult.textContent = '강화 버튼을 눌러주세요.'; // 메시지 초기화
+            enhanceResult.style.color = '#333';
+        }
+        
+        // [추가] 설정 화면으로 전환 시 메시지 및 입력 필드 초기화
+        if (screenId === 'settings-screen') {
+            settingsStatus.textContent = "";
+            backupDataDisplay.value = "";
+            restoreDataInput.value = "";
+        }
+    }
+
+    function handleNavClick(event) {
+        const screenId = event.currentTarget.dataset.screen;
+        switchScreen(screenId);
+    }
+
+    function initializeApp() {
+        loadUserState();
+        updateCoinDisplay();
+            
+        gachaButton.addEventListener('click', handleGacha); 
+        document.getElementById('clear-button').addEventListener('click', clearCollection);
+        startSheepBetBtn.addEventListener('click', startSheepBet);
+        startKungssGameBtn.addEventListener('click', startKungssGame);
+        
+        // ✅ 강화 이벤트 리스너
+        enhanceButton.addEventListener('click', handleEnhance);
+        protectionCheckbox.addEventListener('change', updateEnhanceButtonText);
+
+        // [추가] 설정 화면 버튼 이벤트 리스너
+        backupButton.addEventListener('click', handleBackup);
+        copyBackupButton.addEventListener('click', copyBackupData);
+        restoreButton.addEventListener('click', handleRestore);
+
+        navButtons.forEach(button => {
+            button.addEventListener('click', handleNavClick);
+        });
+
+        initSheepGame();
+        initKungssGame();
+        updateEnhancementUI(); // 앱 시작 시 강화 UI 상태 한 번 업데이트
+            
+        switchScreen('gacha-screen');
+    }
+
+    window.onload = initializeApp;
+</script>
+</body>
+</html>
